@@ -12,11 +12,27 @@ using namespace std;
 //http://blog.kislenko.net/show.php?id=1224
 //https://www.cyberforum.ru/cpp-beginners/thread1160159.html
 
+double u_tochnoe(double x) {
+    return (x+1) * exp(-x*x);
+}
+
+double u_tochnoe_dx(double x) {
+    return (1-2*x*x-2*x) * exp(-x*x);
+}
+
 class solution {
 public:
     double a, b, h;
-    double y0, yn;
+    double t_a, t_b;
     size_t n;
+    double k1;
+    double k2;
+    double l1;
+    double l2;
+    
+    solution(double a, double b, double k1, double k2, double l1, double l2, double t, double z, size_t n)
+    : a(a), b(b), k1(k1), k2(k2), l1(l1), l2(l2), t_a(t), t_b(z), n(n) {    }
+    
     
     vector<double> x;
     vector<double> p;
@@ -24,10 +40,7 @@ public:
     vector<double> f;
     
     vector<double> yy;
-    
-    double u_touch(double x) {
-        return (x+1) * exp(-x*x);
-    }
+
     
     double P(double x) {
         return 4*x;
@@ -48,17 +61,17 @@ public:
     vector<double> A, B, C, FF, k, v;
     
     
-    void setup() {
+    void solve() {
         h = (b - a) / n;
         x.resize(n+1);
         p.resize(n+1);
         q.resize(n+1);
         f.resize(n+1);
         
-        A.resize(n);
-        B.resize(n);
-        C.resize(n);
-        FF.resize(n);
+        A.resize(n+1);
+        B.resize(n+1);
+        C.resize(n+1);
+        FF.resize(n+1);
         
         for (int i = 0; i <= n; i++) {
             x[i] = a + i * h;
@@ -68,49 +81,23 @@ public:
             FF[i] = h*h*F(x[i]);
         }
         
-    
-
-        
-//        for (int i = 1; i <= n - 1; i++) {
-//            A[i] = 1 / h / h + p[i] / 2 / h;
-//            C[i] = -2 / h / h + q[i];
-//            B[i] = 1 / h / h - p[i] / 2 / h;
-//            FF[i] = 0;
-//        }
-//
-//
-//        cout << "Check |C| > |A| + |B|: ";
-//        bool ok = true;
-//        for (int i = 1; i <= n - 1; i++) {
-//            if (abs(C[i]) > abs(A[i]) + abs(B[i])) {
-//                ok = false;
-//                break;
-//            }
-//        }
-//        cout << ok << endl;
-//
         k.resize(n+1);
         v.resize(n+1);
         
         
-        double k1 = 1;
-        double k2 = 0;
-        double l1 = 1;
-        double l2 = 0;
+
         
         
-        
-        // b)
         
         k[1] =-k2 / h*(k1-k2/h);
-        v[1] = y0 / (k1 - k2/h);
+        v[1] = t_a / (k1 - k2/h);
         for (int j = 1; j <= n - 1; j++) {
             k[j+1] = B[j] / (C[j] - A[j] * k[j]);
             v[j+1] = (A[j] * v[j] - FF[j]) / (C[j] - A[j] * k[j]);
         }
         
         yy.resize(n+1);
-        yy[n] = (l2*v[n] + yn*h) / (l2+h*l1-l2*k[n]);
+        yy[n] = (l2*v[n] + t_b*h) / (l2+h*l1-l2*k[n]);
         for (size_t j = n; j >= 1; j--) {
             yy[j-1] = k[j] * yy[j] + v[j];
         }
@@ -122,17 +109,51 @@ public:
 };
 
 int main(int argc, const char * argv[]) {
-    solution s_b;
-    s_b.a = 1e-3;
-    s_b.b = 3;
-    s_b.n = 1000;
-    s_b.y0 = s_b.u_touch(s_b.a);
-    s_b.yn = s_b.u_touch(s_b.b);
-    s_b.setup();
+    //solution(double a, double b, double k1, double k2, double l1, double l2, double t, double z, size_t n)
+    
+    // b) (4)
+    ofstream f1("b4.txt");
+    double a = 1e-3;
+    double b = 3;
+    double w_a = u_tochnoe(a);
+    double w_b = u_tochnoe(b);
+    solution s_b(a, b, 1, 0, 1, 0, w_a, w_b, 1000);
+    s_b.solve();
     for (int i = 0; i <= s_b.n; i++) {
-        cout << s_b.x[i] << "\t\t" << s_b.yy[i] << endl;
+        // x_i << y_i
+        f1 << s_b.x[i] << "\t\t" << s_b.yy[i] << endl;
     }
 
+    // a) sposob 1
     
+    ofstream f2("a1_1000.txt");
+     a = 1e-3;
+     b = 2;
+     
+    size_t n = 1000;
+    double h = (b - a) / n;
+    w_a = u_tochnoe_dx(a) * h;
+    w_b = u_tochnoe(b);
+    solution s_a1(a, b, -1, 1, 1, 0, w_a, w_b, n);
+    s_a1.solve();
+    for (int i = 0; i <= s_a1.n; i++) {
+        // x_i << y_i
+        f2 << s_a1.x[i] << "\t\t" << s_a1.yy[i] << endl;
+    }
+    
+    ofstream f3("a1_10000.txt");
+     a = 1e-3;
+     b = 2;
+     
+     n = 10000;
+     h = (b - a) / n;
+    w_a = u_tochnoe_dx(a) * h;
+    w_b = u_tochnoe(b);
+    solution s_a1_1(a, b, -1, 1, 1, 0, w_a, w_b, n);
+    s_a1_1.solve();
+    for (int i = 0; i <= s_a1_1.n; i++) {
+        // x_i << y_i
+        f3 << s_a1_1.x[i] << "\t\t" << s_a1_1.yy[i] << endl;
+    }
     return 0;
 }
